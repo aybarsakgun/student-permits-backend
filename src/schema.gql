@@ -39,7 +39,6 @@ type User {
   phone: String
   image: String!
   school: School!
-  schoolId: String
   role: UserRole!
   classes: [Class!]!
 }
@@ -62,6 +61,7 @@ type Query {
 }
 
 type Mutation {
+  signOut: Boolean!
   createSchool(data: CreateSchoolInput!): School!
   updateSchool(data: UpdateSchoolInput!): School!
   deleteSchool(id: ID!): Boolean!
@@ -79,6 +79,7 @@ input CreateSchoolInput {
 
 input UpdateSchoolInput {
   id: ID!
+  name: String!
 }
 
 input CreateUserInput {

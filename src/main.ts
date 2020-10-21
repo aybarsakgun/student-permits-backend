@@ -8,7 +8,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { AppModule } from './app.module';
 import { env } from './common/env';
-import { IsAuthorized, JwtAuthGuard } from './common/guards';
+import { AuthorizedGuard, JwtAuthGuard, RolesGuard } from './common/guards';
 import { helmetMiddleware, rateLimitMiddleware } from './common/middlewares';
 
 const httpsOptions: HttpsOptions =
@@ -45,7 +45,7 @@ async function bootstrap() {
 
   const reflector = app.get(Reflector);
 
-  app.useGlobalGuards(new JwtAuthGuard(reflector), new IsAuthorized(reflector));
+  app.useGlobalGuards(new JwtAuthGuard(reflector), new AuthorizedGuard(reflector), new RolesGuard(reflector));
   app.useGlobalPipes(validationPipe);
 
   await app.listen(env.PORT);

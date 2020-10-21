@@ -38,21 +38,20 @@ export class User extends BaseModel {
 
   @Field()
   @Column({ default: EMPTY_USER_IMAGE })
-  image: string;
+  image?: string;
 
   @Field(type => School)
   @ManyToOne(type => School)
   school: School;
 
-  @Field({ nullable: true })
   @Column({ nullable: true })
-  schoolId: string;
+  schoolId?: string;
 
   @Field(type => UserRole)
   @Column({ type: 'enum', enum: UserRole })
   role: UserRole;
 
-  @Field(type => [Class])
+  @Field(type => [Class], { nullable: true })
   @ManyToMany(type => Class, _class => _class.users)
   classes?: Class[];
 }

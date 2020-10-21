@@ -2,12 +2,13 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { ClassRepository } from '../classes/class.repository';
-import { brackets, resolveAsyncRelation } from '../common/utils';
+import { brackets, resolveRelation } from '../common/utils';
 import { SchoolRepository } from '../schools/school.repository';
 import { MailerService } from '../services';
 import { CreateUserInput, DeleteUserArgs, GetUsersArgs, UpdateUserInput } from './dto';
 import { UserRole } from './user.model';
 import { UserRepository } from './user.repository';
+import { AuthenticatedUser } from '../common/decorators';
 
 @Injectable()
 export class UsersService {
@@ -20,22 +21,44 @@ export class UsersService {
     private readonly mailerService: MailerService,
   ) {}
 
-  getClasses = resolveAsyncRelation(this.userRepository, 'classes');
+  getClasses = resolveRelation(this.userRepository, 'classes');
 
-  getSchool = resolveAsyncRelation(this.userRepository, 'school');
+  getSchool = resolveRelation(this.userRepository, 'school');
 
-  findById(id: string) {
-    if (!id) return null;
+  async findById(id: string, userId: string) {
+    if (!id) {
+      throw new BadRequestException();
+    }
 
-    return this.userRepository.findOne(id, {
-      relations: ['classes', 'school'],
+    const authenticatedUser = await this.userRepository.findOneOrFail(userId);
+
+    const findUser = await this.userRepository.findOneOrFail(id, {
+      relations: ['classes', 'classes.users'],
     });
+
+    switch (authenticatedUser.role) {
+      case UserRole.SCHOOL_ADMIN:
+        if (findUser.schoolId !== authenticatedUser.schoolId) {
+          throw new ForbiddenException('You cannot get user in any school other than your own.');
+        }
+        break;
+      case UserRole.TEACHER:
+        if (!findUser.classes.find(_class => _class.users.some(user => user.id === authenticatedUser.id))) {
+          throw new ForbiddenException('You cannot get a student to whom you are not a teacher.');
+        }
+        break;
+      default:
+        break;
+    }
+
+    // return this.userRepository.findOne(id, {
+    //   relations: ['classes', 'school'],
+    // });
+    return findUser;
   }
 
-  findByIdOrThrow(id: string) {
-    if (!id) throw new BadRequestException();
-
-    return this.userRepository.findOneOrFail(id);
+  me(userId: string) {
+    return this.userRepository.findOneOrFail(userId);
   }
 
   findAll({ role, search, ids, withDeleted }: GetUsersArgs) {
@@ -73,7 +96,7 @@ export class UsersService {
 
     const findUser = await this.userRepository.findOneOrFail(userId);
 
-    if (findUser.role !== UserRole.ADMIN && findUser.school.id !== checkSchool.id) {
+    if (findUser.role !== UserRole.ADMIN && findUser.schoolId !== checkSchool.id) {
       throw new ForbiddenException('You cannot create user in any school other than your own.');
     }
 
