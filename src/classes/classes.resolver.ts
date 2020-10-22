@@ -1,12 +1,11 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 
-import { AdminGuard } from '../common/guards';
 import { School } from '../schools/school.model';
 import { User } from '../users/user.model';
 import { Class } from './class.model';
 import { ClassesService } from './classes.service';
 import { CreateClassInput, DeleteClassArgs, GetClassArgs, GetClassesArgs, UpdateClassInput } from './dto';
-import { UserId } from '../common/decorators';
+import { AuthenticatedUser } from '../common/decorators';
 
 @Resolver(of => Class)
 export class ClassesResolver {
@@ -33,19 +32,16 @@ export class ClassesResolver {
   }
 
   @Mutation(returns => Class)
-  @AdminGuard()
-  createClass(@Args('data') input: CreateClassInput, @UserId() userId: string) {
+  createClass(@Args('data') input: CreateClassInput, @AuthenticatedUser() userId: string) {
     return this.classesService.create(input, userId);
   }
 
   @Mutation(returns => Class)
-  @AdminGuard()
-  updateClass(@Args('data') input: UpdateClassInput, @UserId() userId: string) {
+  updateClass(@Args('data') input: UpdateClassInput, @AuthenticatedUser() userId: string) {
     return this.classesService.update(input, userId);
   }
 
   @Mutation(returns => Boolean)
-  @AdminGuard()
   deleteClass(@Args() args: DeleteClassArgs) {
     return this.classesService.delete(args);
   }

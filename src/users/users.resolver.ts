@@ -1,20 +1,20 @@
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 
 import { Class } from '../classes/class.model';
-import { UserId } from '../common/decorators';
-import { AdminGuard } from '../common/guards';
 import { School } from '../schools/school.model';
 import { CreateUserInput, DeleteUserArgs, GetUserArgs, GetUsersArgs, UpdateUserInput } from './dto';
-import { User } from './user.model';
+import { User, UserRole } from './user.model';
 import { UsersService } from './users.service';
+import { AuthenticatedUser, Roles } from '../common/decorators';
+import { GetSchoolArgs } from '../schools/dto/get-school.args';
 
 @Resolver(of => User)
 export class UsersResolver {
   constructor(private readonly usersService: UsersService) {}
 
   @ResolveField('classes', returns => [Class])
-  getClasses(@Parent() user: User) {
-    return this.usersService.getClasses(user);
+  getClasses(@Parent() user: User, @AuthenticatedUser() userId: string) {
+    return this.usersService.getClasses(user, userId, [UserRole.ADMIN, UserRole.SCHOOL_ADMIN]);
   }
 
   @ResolveField('school', returns => School)
@@ -23,34 +23,35 @@ export class UsersResolver {
   }
 
   @Query(returns => User, { name: 'user' })
-  getUser(@Args() args: GetUserArgs) {
-    return this.usersService.findById(args.id);
+  @Roles([UserRole.ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER])
+  getUser(@Args() args: GetUserArgs, @AuthenticatedUser() userId: string) {
+    return this.usersService.findById(args.id, userId);
   }
 
   @Query(returns => User, { name: 'me' })
-  getMe(@UserId() userId: string) {
-    return this.usersService.findById(userId);
+  getMe(@AuthenticatedUser() userId: string) {
+    return this.usersService.me(userId);
   }
 
   @Query(returns => [User], { name: 'users' })
+  @Roles([UserRole.ADMIN])
   getUsers(@Args() args?: GetUsersArgs) {
     return this.usersService.findAll(args);
   }
 
   @Mutation(returns => User)
-  @AdminGuard()
-  createUser(@Args('data') input: CreateUserInput, @UserId() userId: string) {
+  @Roles([UserRole.ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER])
+  createUser(@Args('data') input: CreateUserInput, @AuthenticatedUser() userId: string) {
     return this.usersService.create(input, userId);
   }
 
   @Mutation(returns => User)
-  @AdminGuard()
   updateUser(@Args('data') input: UpdateUserInput) {
     return this.usersService.update(input);
   }
 
   @Mutation(returns => Boolean)
-  @AdminGuard()
+  @Roles([UserRole.ADMIN, UserRole.SCHOOL_ADMIN])
   deleteUser(@Args() args: DeleteUserArgs) {
     return this.usersService.delete(args);
   }

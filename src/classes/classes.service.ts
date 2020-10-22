@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { brackets, resolveAsyncRelation } from '../common/utils';
+import { brackets, resolveRelation } from '../common/utils';
 import { SchoolRepository } from '../schools/school.repository';
 import { UserRole } from '../users/user.model';
 import { UserRepository } from '../users/user.repository';
@@ -18,9 +18,9 @@ export class ClassesService {
     private readonly classRepository: ClassRepository,
   ) {}
 
-  getUsers = resolveAsyncRelation(this.classRepository, 'users');
+  getUsers = resolveRelation(this.classRepository, 'users');
 
-  getSchool = resolveAsyncRelation(this.classRepository, 'school');
+  getSchool = resolveRelation(this.classRepository, 'school');
 
   findById(id: string) {
     if (!id) return null;

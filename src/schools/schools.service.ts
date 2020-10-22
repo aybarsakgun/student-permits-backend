@@ -1,6 +1,9 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
-import { brackets, resolveAsyncRelation } from '../common/utils';
+import { brackets, resolveRelation } from '../common/utils';
+import { UserRole } from '../users/user.model';
+import { UserRepository } from '../users/user.repository';
 import { CreateSchoolInput } from './dto/create-school.input';
 import { GetSchoolsArgs } from './dto/get-schools.args';
 import { UpdateSchoolInput } from './dto/update-school.input';
@@ -8,13 +11,24 @@ import { SchoolRepository } from './school.repository';
 
 @Injectable()
 export class SchoolsService {
-  constructor(private readonly schoolRepository: SchoolRepository) {
-  }
+  constructor(
+    private readonly schoolRepository: SchoolRepository,
+    @InjectRepository(UserRepository)
+    private readonly userRepository: UserRepository,
+  ) {}
 
-  getClasses = resolveAsyncRelation(this.schoolRepository, 'classes');
+  getClasses = resolveRelation(this.schoolRepository, 'classes');
 
-  findByIdOrThrow(id: string) {
-    if (!id) throw new BadRequestException();
+  async findById(id: string, userId: string) {
+    if (!id) {
+      throw new BadRequestException();
+    }
+
+    const findUser = await this.userRepository.findOneOrFail(userId);
+
+    if (findUser.role === UserRole.SCHOOL_ADMIN && findUser.schoolId !== id) {
+      throw new ForbiddenException('You can only get your own schools.');
+    }
 
     return this.schoolRepository.findOneOrFail(id);
   }
